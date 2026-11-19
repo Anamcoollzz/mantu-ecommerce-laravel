@@ -1,0 +1,114 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Product;
+use App\Models\ProductBanner;
+use Illuminate\Database\Seeder;
+
+class ProductBannerSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        if (config('stisla.menu_app') !== 'online-shop') {
+            return;
+        }
+
+        $womenProduct = Product::query()->active()->where('slug', 'floral-bohemian-summer-maxi-dress')->first()
+            ?? Product::query()->active()->first();
+        $menProduct = Product::query()->active()->where('slug', 'classic-oxford-slim-long-sleeve-shirt')->first()
+            ?? Product::query()->active()->skip(1)->first()
+            ?? $womenProduct;
+        $childProduct = Product::query()->active()->where('slug', 'french-terry-pullover-streetwear-hoodie')->first()
+            ?? Product::query()->active()->skip(2)->first()
+            ?? $womenProduct;
+        $cosmeticProduct = Product::query()->active()->where('slug', 'velvet-matte-long-stay-liquid-lipstick')->first()
+            ?? Product::query()->active()->skip(3)->first()
+            ?? $womenProduct;
+
+        $banners = [
+            [
+                'title' => "Fashion sale <br>for women's",
+                'subtitle' => 'Elevate your every day. Style that speaks volumes.',
+                'badge_label' => '50% Off',
+                'button_text' => 'Shop Now',
+                'product_id' => $womenProduct?->id,
+                'button_url' => $womenProduct ? route('ecommerce.products.detail', $womenProduct->slug, false) : '/ecommerce/products',
+                'image' => 'https://images.unsplash.com/photo-1483985988635-767283938640?w=1600&h=600&auto=format&fit=crop&q=80',
+                'position' => 'hero',
+                'order' => 1,
+                'is_active' => true,
+            ],
+            [
+                'title' => "Fashion sale <br>for Men's",
+                'subtitle' => 'Wear the change. Fashion that feels good.',
+                'badge_label' => '35% Off',
+                'button_text' => 'Shop Now',
+                'product_id' => $menProduct?->id,
+                'button_url' => $menProduct ? route('ecommerce.products.detail', $menProduct->slug, false) : '/ecommerce/products',
+                'image' => 'https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?w=1600&h=600&auto=format&fit=crop&q=80',
+                'position' => 'hero',
+                'order' => 2,
+                'is_active' => true,
+            ],
+            [
+                'title' => "Fashion sale <br>for Children's",
+                'subtitle' => 'Wear the change. Fashion that feels good.',
+                'badge_label' => '44% Off',
+                'button_text' => 'Shop Now',
+                'product_id' => $childProduct?->id,
+                'button_url' => $childProduct ? route('ecommerce.products.detail', $childProduct->slug, false) : '/ecommerce/products',
+                'image' => 'https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?w=1600&h=600&auto=format&fit=crop&q=80',
+                'position' => 'hero',
+                'order' => 3,
+                'is_active' => true,
+            ],
+            [
+                'title' => "Cosmetics sale <br>for Women's",
+                'subtitle' => 'Wear the change. Fashion that feels good.',
+                'badge_label' => '22% Off',
+                'button_text' => 'Shop Now',
+                'product_id' => $cosmeticProduct?->id,
+                'button_url' => $cosmeticProduct ? route('ecommerce.products.detail', $cosmeticProduct->slug, false) : '/ecommerce/products',
+                'image' => 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1600&h=600&auto=format&fit=crop&q=80',
+                'position' => 'hero',
+                'order' => 4,
+                'is_active' => true,
+            ],
+            [
+                'title' => 'Fashion COLLECTION',
+                'subtitle' => 'New Stylish Shirts, Pants & Accessories.',
+                'badge_label' => "WOMEN'S",
+                'button_text' => 'Book Now',
+                'product_id' => $womenProduct?->id,
+                'button_url' => $womenProduct ? route('ecommerce.products.detail', $womenProduct->slug, false) : '/ecommerce/products',
+                'image' => 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1200&h=700&auto=format&fit=crop&q=80',
+                'position' => 'modern',
+                'order' => 1,
+                'is_active' => true,
+            ],
+            [
+                'title' => 'Goggles COLLECTION',
+                'subtitle' => 'New Stylish Eyewear, Shades & Accessories.',
+                'badge_label' => "WOMEN'S",
+                'button_text' => 'Book Now',
+                'product_id' => $cosmeticProduct?->id,
+                'button_url' => $cosmeticProduct ? route('ecommerce.products.detail', $cosmeticProduct->slug, false) : '/ecommerce/products',
+                'image' => 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=1200&h=700&auto=format&fit=crop&q=80',
+                'position' => 'modern',
+                'order' => 2,
+                'is_active' => true,
+            ],
+        ];
+
+        foreach ($banners as $banner) {
+            ProductBanner::updateOrCreate(
+                ['title' => $banner['title'], 'position' => $banner['position']],
+                $banner
+            );
+        }
+    }
+}

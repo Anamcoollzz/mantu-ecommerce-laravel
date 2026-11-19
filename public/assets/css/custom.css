@@ -1,0 +1,18 @@
+/**
+ *
+ * Custom CSS overrides and project specific styles
+ *
+ */
+
+/* Ensure Bootstrap modals always appear above backdrop overlay */
+.modal-backdrop {
+  z-index: 1040 !important;
+}
+
+.modal {
+  z-index: 1050 !important;
+}
+
+.modal-dialog {
+  z-index: 1060 !important;
+}

@@ -1,0 +1,315 @@
+@php
+  $blog = $blog ?? \App\Models\Blog::query()->active()->firstOrFail();
+  $recentBlogs = $recentBlogs ?? \App\Models\Blog::query()->active()->where('id', '!=', $blog->id)->orderBy('order')->latest('published_at')->latest('id')->take(5)->get();
+  $categories = $categories ?? \App\Models\Blog::query()->active()->whereNotNull('category')->where('category', '!=', '')->select('category')->selectRaw('count(*) as count')->groupBy('category')->orderBy('category')->get();
+  $comments = $comments ?? $blog->topLevelComments()->get();
+  $totalComments = $totalComments ?? $blog->approvedComments()->count();
+@endphp
+@extends('ecommerce.layouts.app-ecommerce')
+
+@section('meta')
+  @php
+    $siteName = \App\Models\Setting::getValue('site_title') ?: config('app.name', 'Stisla');
+    $metaTitle = $blog->title . ' — ' . $siteName;
+    $metaDesc = Str::limit(strip_tags($blog->short_description ?: $blog->content), 160);
+    $metaKeywords = implode(', ', array_filter([$blog->category, 'blog', 'ecommerce', Str::slug($blog->title, ' ')]));
+    $canonicalUrl = route('ecommerce.blogs.detail', $blog->slug);
+    $favicon = \App\Models\Setting::getValue('site_favicon');
+    $faviconUrl = ($favicon && \Illuminate\Support\Facades\Storage::disk('public')->exists($favicon))
+        ? \Illuminate\Support\Facades\Storage::disk('public')->url($favicon)
+        : (file_exists(public_path('mantu/assets/img/favicon/favicon.png')) ? asset('mantu/assets/img/favicon/favicon.png') : asset('favicon.ico'));
+  @endphp
+  <title>{{ $metaTitle }}</title>
+  <meta name="description" content="{{ $metaDesc }}">
+  <meta name="keywords" content="{{ $metaKeywords }}">
+  <meta name="author" content="{{ $blog->author_name ?: $siteName }}">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="{{ $canonicalUrl }}">
+
+  <!-- Favicon -->
+  <link rel="shortcut icon" href="{{ $faviconUrl }}">
+  <link rel="icon" type="image/png" href="{{ $faviconUrl }}">
+  <link rel="apple-touch-icon" href="{{ $faviconUrl }}">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="{{ $siteName }}">
+  <meta property="og:title" content="{{ $blog->title }}">
+  <meta property="og:description" content="{{ $metaDesc }}">
+  <meta property="og:url" content="{{ $canonicalUrl }}">
+  <meta property="og:image" content="{{ $blog->image_url }}">
+  <meta property="article:published_time" content="{{ $blog->published_at ? $blog->published_at->toIso8601String() : $blog->created_at->toIso8601String() }}">
+  <meta property="article:section" content="{{ $blog->category ?? 'General' }}">
+  <meta property="article:author" content="{{ $blog->author_name ?: $siteName }}">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ $blog->title }}">
+  <meta name="twitter:description" content="{{ $metaDesc }}">
+  <meta name="twitter:image" content="{{ $blog->image_url }}">
+@endsection
+
+@section('vendor-css')
+  <link href="{{ asset('mantu/assets/css/vendor/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ asset('mantu/assets/css/vendor/animate.min.css') }}" rel="stylesheet">
+  <link href="{{ asset('mantu/assets/css/vendor/owl.carousel.min.css') }}" rel="stylesheet">
+  <link href="{{ asset('mantu/assets/css/vendor/slick.min.css') }}" rel="stylesheet">
+  <link href="{{ asset('mantu/assets/css/vendor/swiper-bundle.min.css') }}" rel="stylesheet">
+  <link href="{{ asset('mantu/assets/css/vendor/nouislider.css') }}" rel="stylesheet">
+@endsection
+
+@section('vendor-js')
+  <script src="{{ asset('mantu/assets/js/vendor/jquery-3.7.1.min.js') }}"></script>
+  <script src="{{ asset('mantu/assets/js/vendor/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ asset('mantu/assets/js/vendor/owl.carousel.min.js') }}"></script>
+  <script src="{{ asset('mantu/assets/js/vendor/slick.min.js') }}"></script>
+  <script src="{{ asset('mantu/assets/js/vendor/swiper-bundle.min.js') }}"></script>
+  <script src="{{ asset('mantu/assets/js/vendor/countdownTimer.js') }}"></script>
+  <script src="{{ asset('mantu/assets/js/vendor/infiniteslidev2.js') }}"></script>
+  <script src="{{ asset('mantu/assets/js/vendor/nouislider.js') }}"></script>
+  <script src="{{ asset('mantu/assets/js/vendor/smoothscroll.min.js') }}"></script>
+  <script src="{{ asset('mantu/assets/js/vendor/jquery.zoom.min.js') }}"></script>
+@endsection
+
+@section('content')
+<!-- Main Content -->
+<div class="mn-main-content">
+	<div class="mn-breadcrumb m-b-30">
+		<div class="row">
+			<div class="col-12">
+				<div class="row gi_breadcrumb_inner">
+					<div class="col-md-6 col-sm-12">
+						<h2 class="mn-breadcrumb-title">{{ $blog->title }}</h2>
+					</div>
+					<div class="col-md-6 col-sm-12">
+						<!-- mn-breadcrumb-list start -->
+						<ul class="mn-breadcrumb-list">
+							<li class="mn-breadcrumb-item"><a href="{{ route('ecommerce.index.html') }}">{{ __('Home') }}</a></li>
+							<li class="mn-breadcrumb-item"><a href="{{ route('ecommerce.blogs.index') }}">{{ __('Blog') }}</a></li>
+							<li class="mn-breadcrumb-item active">{{ Str::limit($blog->title, 25) }}</li>
+						</ul>
+						<!-- mn-breadcrumb-list end -->
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row m-b-30">
+		<div class="mn-blogs-rightside col-lg-8 col-md-12">
+			<!-- Blog content Start -->
+			<div class="mn-blogs-content">
+				<div class="mn-blogs-inner">
+					<div class="mn-single-blog-item">
+						<div class="single-blog-info">
+							<figure class="blog-img">
+								<a href="javascript:void(0)"><img src="{{ $blog->image_url }}" alt="{{ $blog->title }}" class="img-fluid rounded" style="width: 100%; max-height: 480px; object-fit: cover;"></a>
+							</figure>
+							<div class="single-blog-detail">
+								<label>
+									{{ $blog->published_at ? $blog->published_at->format('F d, Y') : $blog->created_at->format('F d, Y') }} - 
+									<span class="text-primary font-weight-bold">{{ $blog->category ?? __('General') }}</span>
+									@if ($blog->author_name)
+										• {{ __('By') }} <span class="text-dark">{{ $blog->author_name }}</span>
+									@endif
+								</label>
+								<h3>{{ $blog->title }}</h3>
+
+								@if ($blog->short_description)
+									<p class="mn-text-highlight">{{ $blog->short_description }}</p>
+								@endif
+
+								<div class="blog-body-content">
+									{!! $blog->content !!}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Comments Start -->
+				<div class="mn-blog-comments m-t-30" id="comments">
+					@if (session('comment_success'))
+						<div class="alert alert-success alert-dismissible fade show" role="alert">
+							<strong><i class="ri-checkbox-circle-line me-1"></i> {{ session('comment_success') }}</strong>
+							<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+						</div>
+					@endif
+
+					<div class="mn-blog-cmt-preview">
+						<div class="mn-blog-comment-wrapper">
+							<h4 class="mn-blog-dmn-title">{{ __('Comments') }} : {{ str_pad($totalComments, 2, '0', STR_PAD_LEFT) }}</h4>
+							@forelse ($comments as $comment)
+								<div class="mn-single-comment-wrapper mt-35" id="comment-{{ $comment->id }}">
+									<div class="mn-blog-user-img">
+										<img src="{{ $comment->avatar_url }}" alt="{{ $comment->name }}" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover;">
+									</div>
+									<div class="mn-blog-comment-content">
+										<h5>{{ $comment->name }}</h5>
+										<span>{{ $comment->created_at->format('F d, Y') }}</span>
+										<p>{{ $comment->comment }}</p>
+										<div class="mn-blog-details-btn">
+											<a href="#comment-form" onclick="setReply({{ $comment->id }}, '{{ addslashes($comment->name) }}')">{{ __('Reply') }}</a>
+										</div>
+									</div>
+								</div>
+
+								@foreach ($comment->replies as $reply)
+									<div class="mn-single-comment-wrapper sub-cmt" id="comment-{{ $reply->id }}">
+										<div class="mn-blog-user-img">
+											<img src="{{ $reply->avatar_url }}" alt="{{ $reply->name }}" class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">
+										</div>
+										<div class="mn-blog-comment-content">
+											<h5>{{ $reply->name }} <span class="badge bg-light text-muted small border ms-1">{{ __('Reply') }}</span></h5>
+											<span>{{ $reply->created_at->format('F d, Y') }}</span>
+											<p>{{ $reply->comment }}</p>
+											<div class="mn-blog-details-btn">
+												<a href="#comment-form" onclick="setReply({{ $comment->id }}, '{{ addslashes($reply->name) }}')">{{ __('Reply') }}</a>
+											</div>
+										</div>
+									</div>
+								@endforeach
+							@empty
+								<p class="text-muted py-3">{{ __('No comments for this article yet. Be the first to comment!') }}</p>
+							@endforelse
+						</div>
+					</div>
+
+					<div class="mn-blog-cmt-form" id="comment-form">
+						<div class="mn-blog-reply-wrapper mt-50">
+							<h4 class="mn-blog-dmn-title" id="reply-title">{{ __('Leave A Reply') }}</h4>
+							<div id="reply-alert" class="alert alert-info py-2 px-3 d-none align-items-center justify-content-between mb-3" style="border-radius: 6px;">
+								<span>{{ __('Replying to comment') }} <strong id="reply-to-name"></strong></span>
+								<button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="cancelReply()">{{ __('Cancel Reply') }}</button>
+							</div>
+
+							<form class="mn-blog-form" action="{{ route('ecommerce.blogs.comment.store', $blog->slug) }}" method="POST">
+								@csrf
+								<input type="hidden" name="parent_id" id="comment-parent-id" value="{{ old('parent_id') }}">
+
+								@auth
+									<div class="mb-3 p-3 bg-light rounded d-flex align-items-center">
+										<img src="{{ auth()->user()->avatar_url }}" alt="{{ auth()->user()->name }}" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
+										<div>
+											<span class="small text-muted d-block">{{ __('Posting comment as logged in user:') }}</span>
+											<strong class="text-dark">{{ auth()->user()->name }}</strong> <span class="text-muted small">({{ auth()->user()->email }})</span>
+										</div>
+									</div>
+								@endauth
+
+								<div class="row">
+									<div class="col-md-6">
+										<div class="mn-leave-form">
+											<input type="text" name="name" placeholder="{{ __('Full Name') }}" value="{{ old('name', auth()->user()?->name) }}" {{ auth()->check() ? 'readonly style=background-color:#f8f9fa;' : '' }} required>
+										</div>
+										@error('name')
+											<small class="text-danger d-block mt-1">{{ $message }}</small>
+										@enderror
+									</div>
+									<div class="col-md-6">
+										<div class="mn-leave-form">
+											<input type="email" name="email" placeholder="{{ __('Email Address') }}" value="{{ old('email', auth()->user()?->email) }}" {{ auth()->check() ? 'readonly style=background-color:#f8f9fa;' : '' }} required>
+										</div>
+										@error('email')
+											<small class="text-danger d-block mt-1">{{ $message }}</small>
+										@enderror
+									</div>
+									<div class="col-md-12">
+										<div class="mn-text-leave">
+											<textarea name="comment" placeholder="{{ __('Your Message / Comment') }}" required>{{ old('comment') }}</textarea>
+											<button type="submit" class="mn-btn-2 border-0"><span>{{ __('Submit Comment') }}</span></button>
+										</div>
+										@error('comment')
+											<small class="text-danger d-block mt-1">{{ $message }}</small>
+										@enderror
+									</div>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+				<!-- Comments End -->
+			</div>
+		</div>
+
+		<!-- Sidebar Area Start -->
+		<div class="mn-blogs-sidebar mn-blogs-leftside col-lg-4 col-md-12 m-t-991">
+			<div class="mn-blog-search">
+				<form class="mn-blog-search-form" action="{{ route('ecommerce.blogs.index') }}" method="GET">
+					<input class="form-control" name="search" placeholder="{{ __('Search Our Blog') }}" type="text" value="{{ request('search') }}">
+					<button class="submit" type="submit"><i class="ri-search-line"></i></button>
+				</form>
+			</div>
+			<div class="mn-blog-sidebar-wrap">
+				<!-- Sidebar Recent Blog Block -->
+				<div class="mn-sidebar-block mn-sidebar-recent-blog">
+					<div class="mn-sb-title">
+						<h3 class="mn-sidebar-title">{{ __('Recent Articles') }}</h3>
+					</div>
+					<div class="mn-blog-block-content mn-sidebar-dropdown">
+						@forelse ($recentBlogs as $recent)
+							<div class="mn-sidebar-block-item">
+								<div class="mn-sidebar-block-img">
+									<a href="{{ route('ecommerce.blogs.detail', $recent->slug) }}">
+										<img src="{{ $recent->image_url }}" alt="{{ $recent->title }}" style="width: 70px; height: 60px; object-fit: cover; border-radius: 4px;">
+									</a>
+								</div>
+								<div class="mn-sidebar-block-detial">
+									<h5 class="mn-blog-title">
+										<a href="{{ route('ecommerce.blogs.detail', $recent->slug) }}">{{ Str::limit($recent->title, 40) }}</a>
+									</h5>
+									<div class="mn-blog-date">{{ $recent->published_at ? $recent->published_at->format('F d, Y') : $recent->created_at->format('F d, Y') }}</div>
+									<span class="text-primary small">- {{ $recent->category ?? __('General') }}</span>
+								</div>
+							</div>
+						@empty
+							<p class="text-muted small">{{ __('No other articles available.') }}</p>
+						@endforelse
+					</div>
+				</div>
+				<!-- Sidebar Recent Blog Block -->
+
+				<!-- Sidebar Category Block -->
+				@if ($categories->isNotEmpty())
+					<div class="mn-sidebar-block">
+						<div class="mn-sb-title">
+							<h3 class="mn-sidebar-title">{{ __('Categories') }}</h3>
+						</div>
+						<div class="mn-blog-block-content mn-sidebar-dropdown">
+							<ul>
+								@foreach ($categories as $cat)
+									<li>
+										<div class="mn-sidebar-block-item d-flex justify-content-between align-items-center py-1">
+											<a href="{{ route('ecommerce.blogs.index', ['category' => $cat->category]) }}" class="text-dark font-weight-bold">{{ $cat->category }}</a>
+											<span class="badge bg-light text-muted border">{{ $cat->count }}</span>
+										</div>
+									</li>
+								@endforeach
+							</ul>
+						</div>
+					</div>
+				@endif
+				<!-- Sidebar Category Block -->
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+function setReply(parentId, authorName) {
+    document.getElementById('comment-parent-id').value = parentId;
+    document.getElementById('reply-to-name').innerText = authorName;
+    document.getElementById('reply-alert').classList.remove('d-none');
+    document.getElementById('reply-alert').classList.add('d-flex');
+    document.getElementById('reply-title').innerText = @json(__('Reply to')) + ' ' + authorName;
+    const form = document.getElementById('comment-form');
+    if (form) form.scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelReply() {
+    document.getElementById('comment-parent-id').value = '';
+    document.getElementById('reply-alert').classList.add('d-none');
+    document.getElementById('reply-alert').classList.remove('d-flex');
+    document.getElementById('reply-title').innerText = @json(__('Leave A Reply'));
+}
+</script>
+@endsection
+
